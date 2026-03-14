@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  traefik:
+    image: traefik:v2.10
+    container_name: traefik
+    restart: always
+    command:
+      - "--configFile=/etc/traefik/traefik.yml"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - "./traefik/traefik.yml:/etc/traefik/traefik.yml"
+      - "./traefik/acme.json:/acme.json"
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+    networks:
+      - proxy
+
+  frontend:
+    build: .
+    container_name: crisisconnect-frontend
+    restart: always
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.frontend.rule=Host(`192.168.23.45`)"
+      - "traefik.http.routers.frontend.entrypoints=web"
+      - "traefik.http.services.frontend.loadbalancer.server.port=80"
+    networks:
+      - proxy
+
+  backend:
+    build: ./backend
+    container_name: myapp-backend
+    restart: always
+    volumes:
+      - ./backend:/app
+      - ./backend/crisis_connect.db:/app/crisis_connect.db # Persist the database
+    working_dir: /app
+    command: ["node", "index.js"]
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.myapp.rule=Host(`192.168.23.45`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.myapp.entrypoints=web"
+      - "traefik.http.services.myapp.loadbalancer.server.port=3000"
+    networks:
+      - proxy
+
+networks:
+  proxy:
+    name: proxy

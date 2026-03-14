@@ -1,0 +1,7 @@
+node_modules
+dist
+backend/node_modules
+backend/crisis_connect.db
+.git
+.vscode
+*.log
